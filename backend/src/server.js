@@ -35,26 +35,41 @@ function isPrivateHostname(hostname) {
 }
 
 const isProd = process.env.NODE_ENV === 'production';
+const allowedOrigins = [
+  'https://realnest-two.vercel.app', // ← yahan frontend ka URL daalo, backend ka nahi
+  'http://localhost:3000',
+  'https://realnest-yc68.vercel.app/'
+];
 
-app.use(
-  cors(
-    isProd
-      ? {
-          origin: (origin, callback) => {
-            if (!origin) return callback(null, true);
-            try {
-              const { hostname } = new URL(origin);
-              if (isPrivateHostname(hostname)) return callback(null, true);
-            } catch {
-              /* ignore */
-            }
-            callback(new Error('Not allowed by CORS'));
-          },
-          credentials: true,
-        }
-      : { origin: true, credentials: true }
-  )
-);
+// app.use(
+//   cors(
+//     isProd
+//       ? {
+//           origin: (origin, callback) => {
+//             if (!origin) return callback(null, true);
+//             try {
+//               const { hostname } = new URL(origin);
+//               if (isPrivateHostname(hostname)) return callback(null, true);
+//             } catch {
+//               /* ignore */
+//             }
+//             callback(new Error('Not allowed by CORS'));
+//           },
+//           credentials: true,
+//         }
+//       : { origin: true, credentials: true }
+//   )
+// );
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 app.get('/api/health', (req, res) => {
@@ -84,6 +99,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
-});
+// app.listen(PORT, HOST, () => {
+//   console.log(`Server running on http://${HOST}:${PORT}`);
+// });
+
+export default app;
