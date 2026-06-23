@@ -36,9 +36,9 @@ function isPrivateHostname(hostname) {
 
 const isProd = process.env.NODE_ENV === 'production';
 const allowedOrigins = [
-  'https://realnest-two.vercel.app', // ← yahan frontend ka URL daalo, backend ka nahi
+  // 'https://realnest-two.vercel.app', // ← yahan frontend ka URL daalo, backend ka nahi
   'http://localhost:3000',
-  'https://realnest-yc68.vercel.app/'
+  'https://realnest-yc68.vercel.app'
 ];
 
 // app.use(
