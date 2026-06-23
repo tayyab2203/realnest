@@ -1,0 +1,407 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  BUYER
+  SELLER
+}
+
+enum PropertyStatus {
+  FOR_SALE
+  FOR_RENT
+  SOLD
+  PAUSED
+}
+
+/** Seller archive visibility — separate from listing status (FOR_SALE, SOLD, etc.). */
+enum PropertyArchiveStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  VILLA
+  DUPLEX
+  WAREHOUSE
+  INDUSTRIAL
+  RESORT
+  OTHER
+}
+
+enum InteractionType {
+  VIEW
+  SAVE
+  LIKE
+  FAVORITE
+}
+
+enum CreditTransactionType {
+  PURCHASE
+  SPENT
+}
+
+enum BoostType {
+  HOT
+  PREMIUM
+  PLATINUM
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  AGENCY
+}
+
+enum SubscriptionStatus {
+  INACTIVE
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum DocumentType {
+  SALE_DEED
+  RENT_AGREEMENT
+}
+
+enum DocStatus {
+  DRAFT
+  SELLER_SIGNED
+  FULLY_EXECUTED
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+}
+
+model Profile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  email         String   @unique
+  name          String
+  phone         String?
+  avatar        String?
+  role          Role
+  credits       Int      @default(0)
+  verifiedBadge Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // --- Subscription / Plan fields ---
+  subscriptionPlan      SubscriptionPlan   @default(FREE)
+  subscriptionStatus    SubscriptionStatus @default(INACTIVE)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  listingLimit          Int                @default(2)
+  isVerified            Boolean            @default(false)
+
+  // --- Agency / Company profile fields (only used when plan = AGENCY) ---
+  companyName        String?
+  companyLogo        String?
+  companyDescription String?
+  officeAddress      String?
+
+  properties               Property[]
+  interactions             UserInteraction[]
+  saved                    SavedProperty[]
+  transactions             Transaction[]
+  creditTransactions       CreditTransaction[]
+  propertyBoosts           PropertyBoost[]
+  subscriptionTransactions SubscriptionTransaction[]
+  agents                   AgencyAgent[]
+  documentsAsSeller        Document[]               @relation("DocumentSeller")
+  documentsAsBuyer         Document[]               @relation("DocumentBuyer")
+  purchaseIntentsAsBuyer   PropertyPurchaseIntent[] @relation("PurchaseIntentBuyer")
+  purchaseIntentsAsSeller  PropertyPurchaseIntent[] @relation("PurchaseIntentSeller")
+  saleInstallments         SaleInstallment[]
+  offlineTransactions      OfflineTransaction[]
+
+  @@map("profiles")
+}
+
+model Property {
+  id               String          @id @default(uuid())
+  sellerId         String
+  seller           Profile         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  type             PropertyType
+  status           PropertyStatus
+  archiveStatus    PropertyArchiveStatus @default(ACTIVE)
+  archivedAt       DateTime?
+  deedDocument     String?
+  pausedFromStatus PropertyStatus?
+  price            Float
+  city             String
+  address          String
+  latitude         Float?
+  longitude        Float?
+  bedrooms         Int
+  bathrooms        Int
+  area             Float
+  images           String[]
+  featured         Boolean         @default(false)
+  listingExpiresAt DateTime?
+  soldAt           DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  interactions       UserInteraction[]
+  saved              SavedProperty[]
+  transactions       Transaction[]
+  boosts             PropertyBoost[]
+  creditTransactions CreditTransaction[]
+  documents            Document[]
+  purchaseIntents      PropertyPurchaseIntent[]
+  saleInstallments     SaleInstallment[]
+  offlineTransactions  OfflineTransaction[]
+
+  @@index([city])
+  @@index([status])
+  @@index([archiveStatus])
+  @@index([type])
+  @@index([price])
+  @@map("properties")
+}
+
+model UserInteraction {
+  id              String          @id @default(uuid())
+  userId          String
+  user            Profile         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId      String
+  property        Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  interactionType InteractionType
+  createdAt       DateTime        @default(now())
+
+  @@unique([userId, propertyId, interactionType])
+  @@index([userId])
+  @@index([propertyId])
+  @@map("user_interactions")
+}
+
+model SavedProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  user       Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+  @@map("saved_properties")
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  userId        String
+  user          Profile           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId    String
+  property      Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amount        Float
+  status        TransactionStatus @default(PENDING)
+  paymentMethod String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  saleInstallment SaleInstallment?
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("transactions")
+}
+
+model OfflineTransaction {
+  id              String   @id @default(cuid())
+  propertyId      String   @unique
+  sellerId        String
+
+  saleDate        DateTime
+  salePrice       Float
+
+  buyerName       String?
+  buyerContact    String?
+
+  transactionType String
+  handoverStatus  String
+
+  documentUrl     String?
+  notes           String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  seller          Profile  @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId])
+  @@map("offline_transactions")
+}
+
+model CreditTransaction {
+  id                    String                @id @default(uuid())
+  sellerId              String
+  seller                Profile               @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  type                  CreditTransactionType
+  amount                Int
+  description           String
+  externalTransactionId String?               @unique
+  propertyId            String?
+  property              Property?             @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  createdAt             DateTime              @default(now())
+
+  @@index([sellerId])
+  @@index([createdAt])
+  @@index([propertyId])
+  @@map("credit_transactions")
+}
+
+model PropertyBoost {
+  id         String    @id @default(uuid())
+  propertyId String
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     Profile   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  boostType  BoostType
+  startDate  DateTime  @default(now())
+  expiryDate DateTime
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  @@index([propertyId])
+  @@index([sellerId])
+  @@index([isActive, expiryDate])
+  @@map("property_boosts")
+}
+
+// Records every subscription purchase for revenue analytics + history.
+// `paymentStatus` mirrors gateway terminology: pending | completed | failed | refunded.
+model SubscriptionTransaction {
+  id              String   @id @default(cuid())
+  userId          String
+  user            Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan            String
+  amount          Float
+  paymentStatus   String
+  externalTxnId   String?  @unique
+  transactionDate DateTime @default(now())
+
+  @@index([userId])
+  @@index([plan])
+  @@index([paymentStatus])
+  @@map("subscription_transactions")
+}
+
+// Lightweight roster of agents managed under an agency profile. Not Supabase-Auth
+// users — the agency owner curates this list inside their own dashboard.
+model AgencyAgent {
+  id        String   @id @default(uuid())
+  agencyId  String
+  agency    Profile  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  phone     String?
+  role      String   @default("Agent")
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agencyId])
+  @@unique([agencyId, email])
+  @@map("agency_agents")
+}
+
+model Document {
+  id                String       @id @default(cuid())
+  propertyId        String
+  property          Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type              DocumentType
+  status            DocStatus    @default(DRAFT)
+
+  sellerId          String
+  seller            Profile      @relation("DocumentSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerAgreed      Boolean      @default(false)
+  sellerAgreedAt    DateTime?
+  sellerIP          String?
+  sellerOTPVerified Boolean      @default(false)
+
+  buyerId           String?
+  buyer             Profile?     @relation("DocumentBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+  buyerAgreed       Boolean      @default(false)
+  buyerAgreedAt     DateTime?
+  buyerIP           String?
+  buyerOTPVerified  Boolean      @default(false)
+
+  documentHash      String?
+  finalPdfUrl       String?
+  generatedAt       DateTime     @default(now())
+  executedAt        DateTime?
+  buyerNotifiedAt   DateTime?
+
+  purchaseIntent PropertyPurchaseIntent?
+  saleInstallments SaleInstallment[]
+
+  @@index([propertyId])
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("documents")
+}
+
+model PropertyPurchaseIntent {
+  id         String    @id @default(cuid())
+  propertyId String
+  property   Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyerId    String
+  buyer      Profile   @relation("PurchaseIntentBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     Profile   @relation("PurchaseIntentSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  documentId String?   @unique
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([propertyId, buyerId])
+  @@index([sellerId])
+  @@index([buyerId])
+  @@map("property_purchase_intents")
+}
+
+model SaleInstallment {
+  id            String            @id @default(cuid())
+  propertyId    String
+  property      Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyerId       String
+  buyer         Profile           @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  documentId    String
+  document      Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  sequence      Int
+  label         String
+  amount        Float
+  status        InstallmentStatus @default(PENDING)
+  paidAt        DateTime?
+  transactionId String?           @unique
+  transaction   Transaction?      @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+
+  @@unique([documentId, sequence])
+  @@index([propertyId, buyerId])
+  @@map("sale_installments")
+}

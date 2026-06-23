@@ -1,0 +1,17 @@
+{
+  "name": "realestate",
+  "version": "1.0.0",
+  "description": "A full-stack real estate web app with buyer/seller roles and an AI-powered recommendation engine.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently --names backend,frontend --prefix-colors blue,green \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "start": "concurrently --names backend,frontend --prefix-colors blue,green \"npm start --prefix backend\" \"npm run dev --prefix frontend\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

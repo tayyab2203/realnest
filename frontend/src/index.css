@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Print styles for transaction receipt */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-card {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
