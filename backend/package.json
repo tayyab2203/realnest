@@ -4,8 +4,8 @@
   "description": "Real Estate API with Express + Prisma",
   "type": "module",
   "scripts": {
-    "dev": "npx prisma generate && tsx watch src/server.js",
-    "start": "tsx src/server.js",
+    "dev": "node init && npx prisma generate && tsx watch src/server.js",
+    "start": "node init && tsx src/server.js",
     "db:migrate": "npx prisma migrate dev",
     "db:push": "npx prisma db push",
     "db:generate": "npx prisma generate",
